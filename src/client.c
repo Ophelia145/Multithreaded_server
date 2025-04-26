@@ -15,7 +15,7 @@ main ()
   int client_sock_fd = socket (AF_INET6, SOCK_STREAM, 0);
   if (client_sock_fd < 0)
     {
-      perror ("fd wasn't created, so socket wasnt as well");
+      perror ("fd wasn't created, so socket wasn't as well");
       exit (EXIT_FAILURE);
     }
 
@@ -33,11 +33,11 @@ main ()
                sizeof (serv_addr))
       == -1)
     {
-      perror ("connect() didn work out");
+      perror ("connect() didn't work out");
       close (client_sock_fd);
       exit (EXIT_FAILURE);
     }
-  printf ("Connected to server. Type:\n");
+  printf ("connected to server. type:\n");
   pthread_t thread;
   if (pthread_create (&thread, NULL, send_thread, &client_sock_fd) != 0)
     {
@@ -55,7 +55,7 @@ main ()
           break;
         }
       buffer[bytes] = '\0';
-      printf ("server replies with: %s", buffer);
+      printf ("someone replies with: %s", buffer);
     }
   close (client_sock_fd);
 

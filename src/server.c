@@ -57,7 +57,7 @@ main ()
       close (server_sock_fd);
       exit (EXIT_FAILURE);
     }
-  printf ("Server's port is %d\n", port);
+  printf ("server's port is %d\n", port);
 
   while (1)
     {
@@ -66,7 +66,7 @@ main ()
 
       if (*client_sock_fd < 0)
         {
-          perror ("Accept failed");
+          perror ("accept failed");
           free (client_sock_fd);
           continue;
         }
@@ -74,7 +74,7 @@ main ()
       pthread_t thread;
       if (pthread_create (&thread, NULL, handle_client, client_sock_fd) != 0)
         {
-          perror ("Thread creation failed");
+          perror ("thread creation failed");
           close (*client_sock_fd);
           free (client_sock_fd);
         }
@@ -111,19 +111,19 @@ handle_client (void *arg)
   pthread_mutex_unlock (&clients_mutex);
 
   char buffer[1024];
-  printf ("New client connected (total: %d)\n", client_count);
+  printf ("new client connected (total: %d)\n", client_count);
 
   while (1)
     {
       ssize_t rec_bytes = recv (client_sock_fd, buffer, sizeof (buffer), 0);
       if (rec_bytes <= 0)
         {
-          printf ("Client disconnected\n");
+          printf ("client disconnected\n");
           break;
         }
 
       buffer[rec_bytes] = '\0';
-      printf ("Received: %s", buffer);
+      printf ("received: %s", buffer);
 
       broadcast_message (client_sock_fd, buffer, rec_bytes);
     }
