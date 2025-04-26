@@ -19,5 +19,7 @@ $(SERVER_BIN): $(SERVER_SRC)
 	
 	$(CC) $(CFLAGS) -o $@ $^
 
+rebuild: clean all
+
 clean:
 	@rm -rf $(CLIENT_BIN) $(SERVER_BIN)

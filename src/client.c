@@ -1,81 +1,114 @@
-#include <arpa/inet.h>
-#include <netinet/ip6.h>
-#include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#include "client.h"
 
-void *send_thread (void *arg);
 int
 main ()
 {
+  char username[32], ip[INET6_ADDRSTRLEN] = "::1";
+  int file_port = find_free_port ();
 
-  int client_sock_fd = socket (AF_INET6, SOCK_STREAM, 0);
-  if (client_sock_fd < 0)
+  printf ("Username: ");
+  fgets (username, sizeof (username), stdin);
+  username[strcspn (username, "\n")] = '\0';
+
+  int sockfd = socket (AF_INET6, SOCK_STREAM, 0);
+  struct sockaddr_in6 addr = { 0 };
+  addr.sin6_family = AF_INET6;
+  addr.sin6_port = htons (8080);
+  inet_pton (AF_INET6, "::1", &addr.sin6_addr);
+
+  if (connect (sockfd, (struct sockaddr *)&addr, sizeof (addr)))
     {
-      perror ("fd wasn't created, so socket wasn't as well");
+      perror ("connect");
       exit (EXIT_FAILURE);
     }
 
-  struct sockaddr_in6 serv_addr = { 0 };
-  serv_addr.sin6_family = AF_INET6;
-  serv_addr.sin6_port = htons (8080);
+  char reg_msg[256];
+  snprintf (reg_msg, sizeof (reg_msg), "REGISTER %s %s %d", username, ip,
+            file_port);
+  send (sockfd, reg_msg, strlen (reg_msg), 0);
 
-  if (inet_pton (AF_INET6, "::1", &serv_addr.sin6_addr) != 1)
-    {
-      perror ("inet_pton is a failure");
-      close (client_sock_fd);
-      exit (EXIT_FAILURE);
-    }
-  if (connect (client_sock_fd, (const struct sockaddr *)&serv_addr,
-               sizeof (serv_addr))
-      == -1)
-    {
-      perror ("connect() didn't work out");
-      close (client_sock_fd);
-      exit (EXIT_FAILURE);
-    }
-  printf ("connected to server. type:\n");
-  pthread_t thread;
-  if (pthread_create (&thread, NULL, send_thread, &client_sock_fd) != 0)
-    {
-      perror ("pthread_create failed");
-      close (client_sock_fd);
-      exit (EXIT_FAILURE);
-    }
-  char buffer[1024];
-  while (1)
-    {
-      ssize_t bytes = recv (client_sock_fd, buffer, sizeof (buffer) - 1, 0);
-      if (bytes <= 0)
-        {
-          printf ("server disconnected\n");
-          break;
-        }
-      buffer[bytes] = '\0';
-      printf ("someone replies with: %s", buffer);
-    }
-  close (client_sock_fd);
+  ClientState state = { file_port, sockfd };
+  pthread_t file_thread;
+  pthread_create (&file_thread, NULL, file_server, &state);
+  pthread_detach (file_thread);
 
+  pthread_t recv_th;
+  pthread_create (&recv_th, NULL, recv_thread, &state);
+
+  char buf[1024];
+  while (fgets (buf, sizeof (buf), stdin))
+    {
+      send (sockfd, buf, strlen (buf), 0);
+    }
+
+  close (sockfd);
   return 0;
 }
 
-void *
-send_thread (void *arg)
+int
+find_free_port ()
 {
-  int sockfd = *(int *)arg;
-  char buffer[1024];
+  int sock = socket (AF_INET6, SOCK_STREAM, 0);
+  struct sockaddr_in6 addr = { 0 };
+  addr.sin6_family = AF_INET6;
+  addr.sin6_addr = in6addr_any;
+
+  for (int port = FILE_PORT_MIN; port <= FILE_PORT_MAX; port++)
+    {
+      addr.sin6_port = htons (port);
+      if (bind (sock, (struct sockaddr *)&addr, sizeof (addr)) == 0)
+        {
+          close (sock);
+          return port;
+        }
+    }
+  close (sock);
+  return -1;
+}
+
+void *
+file_server (void *arg)
+{
+  ClientState *state = (ClientState *)arg;
+  int sock = socket (AF_INET6, SOCK_STREAM, 0);
+
+  struct sockaddr_in6 addr = { 0 };
+  addr.sin6_family = AF_INET6;
+  addr.sin6_port = htons (state->file_port);
+  addr.sin6_addr = in6addr_any;
+
+  if (bind (sock, (struct sockaddr *)&addr, sizeof (addr)))
+    {
+      perror ("bind");
+      return NULL;
+    }
+
+  listen (sock, 5);
+  printf ("File server started on port %d\n", state->file_port);
 
   while (1)
     {
-      fgets (buffer, sizeof (buffer), stdin);
-      if (send (sockfd, buffer, strlen (buffer), 0) < 0)
-        {
-          perror ("send failed");
-          break;
-        }
+      int client = accept (sock, NULL, NULL);
+      close (client);
+    }
+
+  close (sock);
+  return NULL;
+}
+
+void *
+recv_thread (void *arg)
+{
+  ClientState *state = (ClientState *)arg;
+  char buf[1024];
+
+  while (1)
+    {
+      ssize_t len = recv (state->sockfd, buf, sizeof (buf), 0);
+      if (len <= 0)
+        break;
+      buf[len] = '\0';
+      printf ("%s\n", buf);
     }
   return NULL;
 }
