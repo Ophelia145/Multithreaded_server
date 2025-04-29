@@ -7,8 +7,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#define FILE_PORT_MIN 49152
-#define FILE_PORT_MAX 65535
+#define client_port_MIN 49152
+#define client_port_MAX 65535
 
 typedef struct
 {
@@ -16,6 +16,5 @@ typedef struct
   int sockfd;
 } ClientState;
 
-void *file_server (void *arg);
 void *recv_thread (void *arg);
 int find_free_port ();

@@ -15,7 +15,6 @@ typedef struct
   int sockfd;
   char username[32];
   char ip[INET6_ADDRSTRLEN];
-  int file_port;
   int authenticated;
 } ClientInfo;
 

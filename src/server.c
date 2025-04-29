@@ -79,9 +79,9 @@ handle_client (void *arg)
     }
   buffer[len] = '\0';
 
-  if (sscanf (buffer, "REGISTER %31s %46s %d", client_info.username,
-              client_info.ip, &client_info.file_port)
-      != 3)
+  if (sscanf (buffer, "REGISTER %31s %46s", client_info.username,
+              client_info.ip)
+      != 2)
     {
       const char *err = "Invalid registration format\n";
       send (client_fd, err, strlen (err), 0);
@@ -105,8 +105,7 @@ handle_client (void *arg)
   if (client_count < MAX_CLIENTS)
     {
       clients[client_count++] = client_info;
-      printf ("New client: %s [%s:%d]\n", client_info.username, client_info.ip,
-              client_info.file_port);
+      printf ("New client: %s [%s]\n", client_info.username, client_info.ip);
     }
   else
     {
